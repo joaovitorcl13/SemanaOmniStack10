@@ -12,38 +12,45 @@ module.exports = {
 
 
     async store(request, response) {
+        try {
 
-        const { github_username, techs, latitude, longitude } = request.body;
+            const { github_username, techs, latitude, longitude } = request.body.data;
 
-        let dev = await Dev.findOne({ github_username });
+            let dev = await Dev.findOne({ github_username });
 
-        if (!dev) {
+            if (!dev) {
+                const apiResponse = await axios.get(`https://api.github.com/users/${github_username}`);
 
-            const apiResponse = await axios.get(`https://api.github.com/users/${github_username}`);
 
-            const { name = login, avatar_url, bio } = apiResponse.data;
+                var { name, login, avatar_url, bio } = apiResponse.data;
+                if(!name){
+                    name = login
+                }
+                const techsArray = parseStringAsArray(techs);
 
-            console.log(name, avatar_url, bio);
+                const location = {
+                    type: 'Point',
+                    coordinates: [longitude, latitude],
+                };
 
-            const techsArray = parseStringAsArray(techs);
+                dev = await Dev.create({
+                    github_username,
+                    name,
+                    avatar_url,
+                    bio,
+                    techs: techsArray,
+                    location
+                });
 
-            const location = {
-                type: 'Point',
-                coordinates: [longitude, latitude],
-            };
+                return response.json(dev);
+            }
+            return response.json({error: "Já cadastrado"});
 
-            dev = await Dev.create({
-                github_username,
-                name,
-                avatar_url,
-                bio,
-                techs: techsArray,
-                location
-            });
-
+        } catch (error) {
+            console.log("error")
+            console.log(error)
+            return response.json({ error: error })
         }
-
-        return response.json(dev);
 
     },
     async update(request, response) {
@@ -84,7 +91,7 @@ module.exports = {
                 newDev.techs = techsArray;
             }
         }
-        if(avatar_url){
+        if (avatar_url) {
             newDev.avatar_url = avatar_url;
         }
 
