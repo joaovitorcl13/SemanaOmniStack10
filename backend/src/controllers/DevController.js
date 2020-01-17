@@ -1,7 +1,8 @@
 const axios = require('axios');
 const Dev = require('../models/Dev');
-const parseStringAsArray = require('../utils/parseStringAsArray');
 
+const parseStringAsArray = require('../utils/parseStringAsArray');
+const { findConnections, sendMessage } = require('../websocket');
 
 module.exports = {
     async index(request, response) {
@@ -23,7 +24,7 @@ module.exports = {
 
 
                 var { name, login, avatar_url, bio } = apiResponse.data;
-                if(!name){
+                if (!name) {
                     name = login
                 }
                 const techsArray = parseStringAsArray(techs);
@@ -42,9 +43,16 @@ module.exports = {
                     location
                 });
 
+                const sendSocketMessageTo = findConnections(
+                    { latitude, longitude },
+                    techsArray
+                );
+                
+                sendMessage(sendSocketMessageTo, 'new-dev',dev);
+
                 return response.json(dev);
             }
-            return response.json({error: "Já cadastrado"});
+            return response.json({ error: "Já cadastrado" });
 
         } catch (error) {
             console.log("error")
@@ -53,6 +61,9 @@ module.exports = {
         }
 
     },
+
+
+
     async update(request, response) {
 
         const {
@@ -100,6 +111,7 @@ module.exports = {
         return response.json(responseUpdate);
 
     },
+
     async destroy(request, response) {
 
         const { github_username } = request.query;
